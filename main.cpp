@@ -1,7 +1,7 @@
 // Dear ImGui: standalone example application for DirectX 11
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
-
+#define WIN32_LEAN_AND_MEAN
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
@@ -11,6 +11,15 @@
 #include <dwmapi.h>
 
 #include "imgui/imgui_internal.h"
+
+#include <windows.h>
+#include <uxtheme.h>
+#include <vssym32.h>
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "uxtheme.lib")
+
+#include <stdbool.h>
 
 // Data
 static ID3D11Device*            g_pd3dDevice = nullptr;
@@ -25,6 +34,40 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+static int
+win32_dpi_scale(
+    int value,
+    UINT dpi
+) {
+    return (int)((float)value * dpi / 96);
+}
+
+static bool
+win32_window_is_maximized(HWND handle) {
+    WINDOWPLACEMENT placement = { 0 };
+    placement.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(handle, &placement)) {
+        return placement.showCmd == SW_SHOWMAXIMIZED;
+    }
+    return false;
+}
+
+static RECT win32_titlebar_rect(HWND handle) {
+    SIZE title_bar_size = { 0 };
+    const int top_and_bottom_borders = 2;
+    HTHEME theme = OpenThemeData(handle, L"WINDOW");
+    UINT dpi = GetDpiForWindow(handle);
+    GetThemePartSize(theme, NULL, WP_CAPTION, CS_ACTIVE, NULL, TS_TRUE, &title_bar_size);
+    CloseThemeData(theme);
+
+    int height = win32_dpi_scale(title_bar_size.cy, dpi) + top_and_bottom_borders;
+
+    RECT rect;
+    GetClientRect(handle, &rect);
+    rect.bottom = rect.top + height;
+    return rect;
+}
+
 // Main code
 int main(int, char**)
 {
@@ -32,16 +75,14 @@ int main(int, char**)
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"TextEditor", nullptr };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"TextEditor", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), nullptr, nullptr, wc.hInstance, nullptr);//WS_POPUPWINDOW | WS_SIZEBOX
-
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"TextEditor", WS_THICKFRAME | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_VISIBLE, 200, 200, GetSystemMetrics(SM_CXSCREEN)-400, GetSystemMetrics(SM_CYSCREEN)-400, nullptr, nullptr, wc.hInstance, nullptr);//WS_POPUPWINDOW | WS_SIZEBOX
     //BOOL darkmode = TRUE;
     //::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkmode, sizeof(darkmode));
     //::DwmSetWindowAttribute(hwnd, DWMWA_ALLOW_NCPAINT, &darkmode, sizeof(darkmode));
     //::DwmSetWindowAttribute(hwnd, DWMWA_NCRENDERING_POLICY, &darkmode, sizeof(darkmode));
     /*MARGINS margins{};
-    margins = { 0, 0, 100, 0 };
+    margins = { 0, 0, 31, 0 };
     auto hr = DwmExtendFrameIntoClientArea(hwnd, &margins);*/
-
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -87,7 +128,7 @@ int main(int, char**)
     //IM_ASSERT(font != nullptr);
 
     // Our state
-    ImVec4 clear_color = ImVec4(1.00f, 1.00f, 1.00f, 0.00f);
+    ImVec4 clear_color = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 
     // Main loop
     bool done = false;
@@ -219,6 +260,82 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     switch (msg)
     {
+    case WM_CREATE: {
+        RECT size_rect;
+        GetWindowRect(hWnd, &size_rect);
+
+        // Inform the application of the frame change to force redrawing with the new
+        // client area that is extended into the title bar
+        SetWindowPos(
+            hWnd, NULL,
+            size_rect.left, size_rect.top,
+            size_rect.right - size_rect.left, size_rect.bottom - size_rect.top,
+            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE
+        );
+        break;
+    }
+    case WM_NCCALCSIZE: {
+        if (!wParam) return DefWindowProc(hWnd, msg, wParam, lParam);
+        UINT dpi = GetDpiForWindow(hWnd);
+
+        int frame_x = GetSystemMetricsForDpi(SM_CXFRAME, dpi);
+        int frame_y = GetSystemMetricsForDpi(SM_CYFRAME, dpi);
+        int padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+
+        NCCALCSIZE_PARAMS* params = (NCCALCSIZE_PARAMS*)lParam;
+        RECT* requested_client_rect = params->rgrc;
+
+        requested_client_rect->right -= frame_x + padding;
+        requested_client_rect->left += frame_x + padding;
+        requested_client_rect->bottom -= frame_y + padding;
+
+        if (win32_window_is_maximized(hWnd)) {
+            requested_client_rect->top += padding;
+        }
+
+        return 0;
+    }
+    case WM_NCHITTEST: {
+        // Let the default procedure handle resizing areas
+        LRESULT hit = DefWindowProc(hWnd, msg, wParam, lParam);
+        switch (hit) {
+        case HTNOWHERE:
+        case HTRIGHT:
+        case HTLEFT:
+        case HTTOPLEFT:
+        case HTTOP:
+        case HTTOPRIGHT:
+        case HTBOTTOMRIGHT:
+        case HTBOTTOM:
+        case HTBOTTOMLEFT: {
+            return hit;
+        }
+        }
+        // Check if hover button is on maximize to support SnapLayout on Windows 11
+        /*if (title_bar_hovered_button == CustomTitleBarHoveredButton_Maximize) {
+            return HTMAXBUTTON;
+        }*/
+
+        // Looks like adjustment happening in NCCALCSIZE is messing with the detection
+        // of the top hit area so manually fixing that.
+        UINT dpi = GetDpiForWindow(hWnd);
+        int frame_y = GetSystemMetricsForDpi(SM_CYFRAME, dpi);
+        int padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+        POINT cursor_point = { 0 };
+        cursor_point.x = LOWORD(lParam);
+        cursor_point.y = HIWORD(lParam);
+        ScreenToClient(hWnd, &cursor_point);
+        if (cursor_point.y > 0 && cursor_point.y < frame_y + padding) {
+            return HTTOP;
+        }
+
+        // Since we are drawing our own caption, this needs to be a custom test
+        if (cursor_point.y < win32_titlebar_rect(hWnd).bottom) {
+            return HTCAPTION;
+        }
+
+        return HTCLIENT;
+    }
     case WM_SIZE:
         if (g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED)
         {
