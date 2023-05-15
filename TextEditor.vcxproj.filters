@@ -4,6 +4,9 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{af251b73-b658-4a17-a3be-7b9da620fa26}</UniqueIdentifier>
     </Filter>
+    <Filter Include="TextEditor">
+      <UniqueIdentifier>{3d481c39-6c88-4593-8319-2eae73273aa2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -27,6 +30,9 @@
     </ClCompile>
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="TextEditor\TextEditor.cpp">
+      <Filter>TextEditor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -54,5 +60,9 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="TextEditor\TextEditor.h">
+      <Filter>TextEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="main.h" />
   </ItemGroup>
 </Project>
