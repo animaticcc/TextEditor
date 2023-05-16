@@ -10,7 +10,7 @@ int main(int argument_count, char* argument_list[])
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"TextEditor", WS_OVERLAPPEDWINDOW, 200, 200, GetSystemMetrics(SM_CXSCREEN)-400, GetSystemMetrics(SM_CYSCREEN)-400, nullptr, nullptr, wc.hInstance, nullptr);
     //BOOL darkmode = TRUE;
     //::DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkmode, sizeof(darkmode));
-    /*MARGINS margins{};
+    /*MARGINS margins{};f
     margins = { 0, 0, 31, 0 };
     auto hr = DwmExtendFrameIntoClientArea(hwnd, &margins);*/
 
@@ -21,7 +21,6 @@ int main(int argument_count, char* argument_list[])
     AppendMenuW(hFile, MF_STRING, ID_SAVE, L"Save\tCtrl+S");
     AppendMenuW(hFile, MF_STRING, ID_QUIT, L"Quit\tAlt+F4");
 
-    AppendMenuW(hEdit, MF_STRING | MF_UNCHECKED, ID_READ_ONLY, L"Read only");
     AppendMenuW(hEdit, MF_STRING, ID_UNDO, L"Undo\tCtrl+Z");
     AppendMenuW(hEdit, MF_STRING, ID_REDO, L"Redo\tCtrl+Y");
     AppendMenuW(hEdit, MF_SEPARATOR, 0, NULL);
@@ -84,8 +83,14 @@ int main(int argument_count, char* argument_list[])
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
+    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    static const ImWchar icons_ranges_brands[] = { ICON_MIN_FAB, ICON_MAX_16_FAB, 0 };
+    ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
+
     io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\CascadiaMono.ttf", 14);
     //io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Verdana.ttf", 14);
+    FontAwesome = io.Fonts->AddFontFromMemoryCompressedTTF(fa6_solid_compressed_data, fa6_solid_compressed_size, 14.f, &icons_config, icons_ranges);
+    FontAwesomeBrands = io.Fonts->AddFontFromMemoryCompressedTTF(fa_brands_400_compressed_data, fa_brands_400_compressed_size, 14.f, &icons_config, icons_ranges_brands);
 
     // Our state
     ImVec4 clear_color = ImVec4(255 / 255.f, 255 / 255.f, 255 / 255.f, 255 / 255.f);
@@ -183,7 +188,7 @@ int main(int argument_count, char* argument_list[])
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
-                ImGui::BeginChild("ExplorerChild", ImVec2(0,0), false);
+                ImGui::BeginChild("ExplorerChild", ImVec2(0, ImGui::GetWindowSize().y - 20), false);
                 {
                     RecursivelyDisplayDirectoryNode(rootNode);
                 }
@@ -197,10 +202,13 @@ int main(int argument_count, char* argument_list[])
                 }
 
                 ImGui::TableSetColumnIndex(1);
-                editor.Render("TextEditor");
+                editor.Render("TextEditor", ImVec2(0, ImGui::GetWindowSize().y - 20));
 
                 ImGui::EndTable();
             }
+
+            auto cpos = editor.GetCursorPosition();
+            ImGui::Text("Ln: %d | Col: %d | %d lines | %s | Lang: %s | File: %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), editor.IsOverwrite() ? "Ovr" : "Ins", editor.GetLanguageDefinition().mName.c_str(), fileToEdit);
 
             /*ImGui::Checkbox("Bg", &bg);
             ImGui::ColorEdit4("clear color", (float*)&clear_color);
@@ -211,6 +219,14 @@ int main(int argument_count, char* argument_list[])
         ImGui::ShowDemoWindow();
 
         //clear_color = ImLerp(clear_color, ImVec4(31 / 255.f, 31 / 255.f, 31 / 255.f, bg ? 255 / 255.f : 155 / 255.f), io.DeltaTime * 10.0f);
+
+        // Enable/disable menu bar buttons
+        EnableMenuItem(GetMenu(hwnd), ID_UNDO, MF_BYCOMMAND | (editor.CanUndo() ? MF_ENABLED : MF_DISABLED));
+        EnableMenuItem(GetMenu(hwnd), ID_REDO, MF_BYCOMMAND | (editor.CanRedo() ? MF_ENABLED : MF_DISABLED));
+        EnableMenuItem(GetMenu(hwnd), ID_COPY, MF_BYCOMMAND | (editor.HasSelection() ? MF_ENABLED : MF_DISABLED));
+        EnableMenuItem(GetMenu(hwnd), ID_CUT, MF_BYCOMMAND | (editor.HasSelection() ? MF_ENABLED : MF_DISABLED));
+        EnableMenuItem(GetMenu(hwnd), ID_DELETE, MF_BYCOMMAND | (editor.HasSelection() ? MF_ENABLED : MF_DISABLED));
+        EnableMenuItem(GetMenu(hwnd), ID_PASTE, MF_BYCOMMAND | (ImGui::GetClipboardText() != nullptr ? MF_ENABLED : MF_DISABLED));
 
         // Rendering
         ImGui::Render();
@@ -234,3 +250,5 @@ int main(int argument_count, char* argument_list[])
 
     return 0;
 }
+
+

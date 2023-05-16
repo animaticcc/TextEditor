@@ -16,21 +16,41 @@
 #include <iostream>
 
 #include "TextEditor/TextEditor.h"
+#include "FontAwesome/IconsFontAwesome6.h"
+#include "FontAwesome/IconsFontAwesome6Brands.h"
 
 #define ID_SAVE 1
 #define ID_QUIT 2
-#define ID_READ_ONLY 3
-#define ID_UNDO 4
-#define ID_REDO 5
-#define ID_CUT 6
-#define ID_COPY 7
-#define ID_PASTE 8
-#define ID_DELETE 9
-#define ID_SELECT_ALL 10
-#define ID_SHOW_SPACES 11
+#define ID_UNDO 3
+#define ID_REDO 4
+#define ID_CUT 5
+#define ID_COPY 6
+#define ID_PASTE 7
+#define ID_DELETE 8
+#define ID_SELECT_ALL 9
+#define ID_SHOW_SPACES 10
+
+ImFont* FontAwesome;
+ImFont* FontAwesomeBrands;
 
 TextEditor editor;
-static const char* fileToEdit = "";
+const char* fileToEdit = "";
+
+std::map <std::string, const char*> icons = {
+    {"html", ICON_FA_HTML5},
+    {"py", ICON_FA_PYTHON},
+    {"js", ICON_FA_SQUARE_JS},
+    {"css", ICON_FA_CSS3_ALT},
+    {"php", ICON_FA_PHP},
+    {"gitattributes", ICON_FA_GITHUB},
+    {"gitignore", ICON_FA_GITHUB},
+    {"cpp", ICON_FA_FILE_CODE},
+    {"c", ICON_FA_FILE_CODE},
+    {"hpp", ICON_FA_FILE_CODE},
+    {"h", ICON_FA_FILE_CODE},
+    {"png", ICON_FA_FILE_IMAGE},
+    {"jpg", ICON_FA_FILE_IMAGE}
+};
 
 void ToEdit(const char* file)
 {
@@ -60,6 +80,7 @@ struct DirectoryNode
     std::string FileName;
     std::vector<DirectoryNode> Children;
     bool IsDirectory;
+    bool IsOpen = false;
 };
 
 void RecursivelyAddDirectoryNodes(DirectoryNode& parentNode, std::filesystem::directory_iterator directoryIterator)
@@ -99,24 +120,23 @@ void RecursivelyDisplayDirectoryNode(const DirectoryNode& parentNode)
     ImGui::PushID(&parentNode);
     if (parentNode.IsDirectory)
     {
-        static const char* file_icon = "";//ICON_FA_FOLDER;
-        if (ImGui::TreeNodeEx((file_icon + parentNode.FileName).c_str()))//, ImGuiTreeNodeFlags_SpanFullWidth
+        if (ImGui::TreeNodeEx((parentNode.FileName).c_str(), ((parentNode.IsOpen ? ICON_FA_FOLDER_OPEN : ICON_FA_FOLDER) + parentNode.FileName).c_str(), ImGuiTreeNodeFlags_SpanFullWidth))
         {
-            //file_icon = ICON_FA_FOLDER_OPEN;
+            const_cast<DirectoryNode&>(parentNode).IsOpen = true;
+
             for (const DirectoryNode& childNode : parentNode.Children)
                 RecursivelyDisplayDirectoryNode(childNode);
+
             ImGui::TreePop();
         }
-        //else
-            //file_icon = ICON_FA_FOLDER;
+        else
+            const_cast<DirectoryNode&>(parentNode).IsOpen = false;
     }
     else
     {
         std::string type = get_ext(parentNode.FileName);
-        const char* icon = "";//icons.find(type) != icons.end() ? icons[type] : ICON_FA_FILE;
 
-        //ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
-        if (ImGui::TreeNodeEx((icon + parentNode.FileName).c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Leaf))// | ImGuiTreeNodeFlags_SpanFullWidth
+        if (ImGui::TreeNodeEx((parentNode.FileName).c_str(), ((icons.find(type) != icons.end() ? icons[type] : ICON_FA_FILE) + parentNode.FileName + (parentNode.FullPath.c_str() == fileToEdit && editor.CanUndo() ? "*" : "")).c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth))
         {
             if (ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered())
             {
@@ -207,26 +227,49 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_HOTKEY: {
         UINT uState = GetMenuState(GetMenu(hWnd), wParam, MF_BYCOMMAND);
         switch (wParam) {
-        case ID_READ_ONLY:
-            if (uState & MF_CHECKED) {
-                CheckMenuItem(GetMenu(hWnd), wParam, MF_UNCHECKED);
-                editor.SetReadOnly(false);
-            }
-            else {
-                CheckMenuItem(GetMenu(hWnd), wParam, MF_CHECKED);
-                editor.SetReadOnly(true);
-            }
+        case ID_SAVE: {
+            std::string textToSave = editor.GetText();
+            SaveText(textToSave);
             break;
-        case ID_SHOW_SPACES:
-            if (uState & MF_CHECKED) {
-                CheckMenuItem(GetMenu(hWnd), wParam, MF_UNCHECKED);
-                editor.SetShowWhitespaces(false);
-            }
-            else {
-                CheckMenuItem(GetMenu(hWnd), wParam, MF_CHECKED);
-                editor.SetShowWhitespaces(true);
-            }
+        }
+        case ID_QUIT: {
+            ::PostQuitMessage(0);
             break;
+        }
+        case ID_UNDO: {
+            editor.Undo();
+            break;
+        }
+        case ID_REDO: {
+            editor.Redo();
+            break;
+        }
+        case ID_COPY: {
+            editor.Copy();
+            break;
+        }
+        case ID_CUT: {
+            editor.Cut();
+            break;
+        }
+        case ID_DELETE: {
+            editor.Delete();
+            break;
+        }
+        case ID_PASTE: {
+            editor.Paste();
+            break;
+        }
+        case ID_SELECT_ALL: {
+            editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+            break;
+        }
+        case ID_SHOW_SPACES: {
+            bool isChecked = (uState & MF_CHECKED) != 0;
+            CheckMenuItem(GetMenu(hWnd), wParam, isChecked ? MF_UNCHECKED : MF_CHECKED);
+            editor.SetShowWhitespaces(!isChecked);
+            break;
+        }
         }
         break;
     }

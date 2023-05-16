@@ -139,6 +139,8 @@
     <ClCompile Include="TextEditor\TextEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FontAwesome\IconsFontAwesome6.h" />
+    <ClInclude Include="FontAwesome\IconsFontAwesome6Brands.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

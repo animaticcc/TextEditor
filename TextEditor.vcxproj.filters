@@ -7,6 +7,9 @@
     <Filter Include="TextEditor">
       <UniqueIdentifier>{3d481c39-6c88-4593-8319-2eae73273aa2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FontAwesome">
+      <UniqueIdentifier>{07a8312b-0d19-4ca8-af02-6a8960ec9092}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -64,5 +67,11 @@
       <Filter>TextEditor</Filter>
     </ClInclude>
     <ClInclude Include="main.h" />
+    <ClInclude Include="FontAwesome\IconsFontAwesome6.h">
+      <Filter>FontAwesome</Filter>
+    </ClInclude>
+    <ClInclude Include="FontAwesome\IconsFontAwesome6Brands.h">
+      <Filter>FontAwesome</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
