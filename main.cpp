@@ -1,10 +1,48 @@
 #include "main.h"
 
+/*void RenderBlur(HWND hwnd)
+{
+    struct ACCENTPOLICY
+    {
+        int na;
+        int nf;
+        int nc;
+        int nA;
+    };
+    struct WINCOMPATTRDATA
+    {
+        int na;
+        PVOID pd;
+        ULONG ul;
+    };
+
+    const HINSTANCE hm = LoadLibrary("user32.dll");
+    if (hm)
+    {
+        typedef BOOL(WINAPI* pSetWindowCompositionAttribute)(HWND, WINCOMPATTRDATA*);
+
+        const pSetWindowCompositionAttribute SetWindowCompositionAttribute = (pSetWindowCompositionAttribute)GetProcAddress(hm, "SetWindowCompositionAttribute");
+        if (SetWindowCompositionAttribute)
+        {
+            ACCENTPOLICY policy = { 4, 0, 155, 0 };
+            WINCOMPATTRDATA data = { 19, &policy,sizeof(ACCENTPOLICY) };
+            SetWindowCompositionAttribute(hwnd, &data);
+        }
+        FreeLibrary(hm);
+    }
+}*/
+
 // Main code
-int main(int argument_count, char* argument_list[])
+int main(int argc, char* argv[])
 {
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
+    /*HINSTANCE hInstance = GetModuleHandle(NULL);
+    HWND loadingHwnd = CreateWindowEx(0, "STATIC", "Loading...", WS_POPUP | WS_VISIBLE, (GetSystemMetrics(SM_CXSCREEN) - 200) / 2, (GetSystemMetrics(SM_CYSCREEN) - 100) / 2, 200, 100, NULL, NULL, hInstance, NULL);
+    RenderBlur(loadingHwnd);
+    Sleep(3000);
+    DestroyWindow(loadingHwnd);*/
+    FreeConsole();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"TextEditor", nullptr };
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"TextEditor", WS_OVERLAPPEDWINDOW, 200, 200, GetSystemMetrics(SM_CXSCREEN)-400, GetSystemMetrics(SM_CYSCREEN)-400, nullptr, nullptr, wc.hInstance, nullptr);
@@ -37,15 +75,6 @@ int main(int argument_count, char* argument_list[])
     AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hSetting, L"Setting");
     SetMenu(hwnd, hMenubar);
 
-    RegisterHotKey(hwnd, ID_SAVE, MOD_CONTROL | MOD_NOREPEAT, 'S');
-    RegisterHotKey(hwnd, ID_UNDO, MOD_CONTROL | MOD_NOREPEAT, 'Z');
-    RegisterHotKey(hwnd, ID_REDO, MOD_CONTROL | MOD_NOREPEAT, 'Y');
-    RegisterHotKey(hwnd, ID_CUT, MOD_CONTROL | MOD_NOREPEAT, 'X');
-    RegisterHotKey(hwnd, ID_COPY, MOD_CONTROL | MOD_NOREPEAT, 'C');
-    RegisterHotKey(hwnd, ID_PASTE, MOD_CONTROL | MOD_NOREPEAT, 'V');
-    RegisterHotKey(hwnd, ID_DELETE, MOD_NOREPEAT, VK_DELETE);
-    RegisterHotKey(hwnd, ID_SELECT_ALL, MOD_CONTROL | MOD_NOREPEAT, 'A');
-
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
     {
@@ -58,12 +87,10 @@ int main(int argument_count, char* argument_list[])
     ::ShowWindow(hwnd, SW_NORMAL); //SW_MAXIMIZE
     ::UpdateWindow(hwnd);
 
-    //editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
-
     std::string filename;
-    if (argument_count >= 2)
+    if (argc >= 2)
     {
-        filename = argument_list[1];
+        filename = argv[1];
 
         rootNode = CreateDirectryNodeTreeFromPath(filename);
         ToEdit(filename.c_str());
@@ -87,10 +114,13 @@ int main(int argument_count, char* argument_list[])
     static const ImWchar icons_ranges_brands[] = { ICON_MIN_FAB, ICON_MAX_16_FAB, 0 };
     ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
 
-    io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\CascadiaMono.ttf", 14);
-    //io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Verdana.ttf", 14);
-    FontAwesome = io.Fonts->AddFontFromMemoryCompressedTTF(fa6_solid_compressed_data, fa6_solid_compressed_size, 14.f, &icons_config, icons_ranges);
-    FontAwesomeBrands = io.Fonts->AddFontFromMemoryCompressedTTF(fa_brands_400_compressed_data, fa_brands_400_compressed_size, 14.f, &icons_config, icons_ranges_brands);
+    ImFont* main = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arlrdbd.ttf", 15);
+    FontAwesome = io.Fonts->AddFontFromMemoryCompressedTTF(fa6_solid_compressed_data, fa6_solid_compressed_size, 15.f, &icons_config, icons_ranges);
+    FontAwesomeBrands = io.Fonts->AddFontFromMemoryCompressedTTF(fa_brands_400_compressed_data, fa_brands_400_compressed_size, 15.f, &icons_config, icons_ranges_brands);
+    ImFont* large = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arlrdbd.ttf", 21);
+    ImFont* cascadia = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\CascadiaMono.ttf", 15);
+    
+    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::TXT());
 
     // Our state
     ImVec4 clear_color = ImVec4(255 / 255.f, 255 / 255.f, 255 / 255.f, 255 / 255.f);
@@ -126,89 +156,56 @@ int main(int argument_count, char* argument_list[])
             ImGui::SetWindowPos(ImVec2(0,0), ImGuiCond_Once);
             ImGui::SetWindowSize(ImVec2(float(work_pos.x + work_size.x), float(work_pos.y + work_size.y)), ImGuiCond_Always);
 
-            /*ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
-            if (ImGui::BeginMenuBar())
-            {
-                if (ImGui::BeginMenu("File"))
-                {
-                    if (ImGui::MenuItem("Save", "Ctrl-S"))
-                    {
-                        std::string textToSave = editor.GetText();
-                        SaveText(textToSave);
-                    }
-                    if (ImGui::MenuItem("Quit", "Alt-F4"))
-                        break;
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Edit"))
-                {
-                    bool ro = editor.IsReadOnly();
-                    if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                        editor.SetReadOnly(ro);
-                    ImGui::Separator();
-
-                    if (ImGui::MenuItem("Undo", "Ctrl-Z", nullptr, !ro && editor.CanUndo()))
-                        editor.Undo();
-                    if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
-                        editor.Redo();
-
-                    ImGui::Separator();
-
-                    if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
-                        editor.Copy();
-                    if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
-                        editor.Cut();
-                    if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
-                        editor.Delete();
-                    if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                        editor.Paste();
-
-                    ImGui::Separator();
-
-                    if (ImGui::MenuItem("Select all", nullptr, nullptr))
-                        editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Setting"))
-                {
-                    bool ws = editor.IsShowingWhitespaces();
-                    if (ImGui::MenuItem("ShowWhiteSpaces", nullptr, &ws))
-                        editor.SetShowWhitespaces(ws);
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenuBar();
-            }
-            ImGui::PopStyleVar();*/
-
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
             if (ImGui::BeginTable("Layout", 2, ImGuiTableFlags_Resizable))
             {
-                ImGui::TableSetupColumn("Explorer");
+                ImGui::TableSetupColumn("Explorer", ImGuiTableColumnFlags_WidthFixed, 200.0f);
                 ImGui::TableSetupColumn("Editor");
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
-                ImGui::BeginChild("ExplorerChild", ImVec2(0, ImGui::GetWindowSize().y - 20), false);
+                ImGui::BeginChild("ExplorerChild", ImVec2(0, ImGui::GetWindowSize().y - 20), true);
                 {
+                    padding(6,3);
+                    ImGui::PushFont(large);
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_Text), "Explorer");
+                    ImGui::PopFont();
+                    padding(0,3);
                     RecursivelyDisplayDirectoryNode(rootNode);
                 }
                 ImGui::EndChild();
 
-                static unsigned short initial_column_spacing = 0;
-                if (initial_column_spacing < 3)
-                {
-                    ImGui::TableSetColumnWidth(0, 200.0f);
-                    initial_column_spacing++;
-                }
-
                 ImGui::TableSetColumnIndex(1);
+                ImGui::PushFont(cascadia);
                 editor.Render("TextEditor", ImVec2(0, ImGui::GetWindowSize().y - 20));
+                ImGui::PopFont();
 
                 ImGui::EndTable();
             }
 
-            auto cpos = editor.GetCursorPosition();
-            ImGui::Text("Ln: %d | Col: %d | %d lines | %s | Lang: %s | File: %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), editor.IsOverwrite() ? "Ovr" : "Ins", editor.GetLanguageDefinition().mName.c_str(), fileToEdit);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(57 / 255.f, 57 / 255.f, 57 / 255.f, 255.f));
+            ImGui::PushStyleColor(ImGuiCol_TableBorderLight, ImVec4(35 / 255.f, 35 / 255.f, 35 / 255.f, 255.f));
+            ImGui::BeginChild("FooterWrapper", ImVec2(0, 20), true);
+            {
+                if (ImGui::BeginTable("Footer", 4, ImGuiTableFlags_Resizable, ImVec2(0,20)))
+                {
+                    auto cpos = editor.GetCursorPosition();
+                    ImGui::TableSetupColumn("File");
+                    ImGui::TableSetupColumn("CursorPos");
+                    ImGui::TableSetupColumn("Lines");
+                    ImGui::TableSetupColumn("Lang");
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0); padding(5,1); ImGui::Text("File: %s", editor.fileToEdit);
+                    ImGui::TableSetColumnIndex(1); padding(5,1); ImGui::Text("Ln: %d Col: %d", cpos.mLine + 1, cpos.mColumn + 1);
+                    ImGui::TableSetColumnIndex(2); padding(5,1); ImGui::Text("Lines: %d", editor.GetTotalLines());
+                    ImGui::TableSetColumnIndex(3); padding(5,1); ImGui::Text("Lang: %s", editor.GetLanguageDefinition().mName.c_str());
+
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::EndChild();
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
 
             /*ImGui::Checkbox("Bg", &bg);
             ImGui::ColorEdit4("clear color", (float*)&clear_color);
@@ -216,11 +213,12 @@ int main(int argument_count, char* argument_list[])
         }
         ImGui::End();
 
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
 
         //clear_color = ImLerp(clear_color, ImVec4(31 / 255.f, 31 / 255.f, 31 / 255.f, bg ? 255 / 255.f : 155 / 255.f), io.DeltaTime * 10.0f);
 
         // Enable/disable menu bar buttons
+        EnableMenuItem(GetMenu(hwnd), ID_SAVE, MF_BYCOMMAND | (editor.fileToEdit != "" ? MF_ENABLED : MF_DISABLED));
         EnableMenuItem(GetMenu(hwnd), ID_UNDO, MF_BYCOMMAND | (editor.CanUndo() ? MF_ENABLED : MF_DISABLED));
         EnableMenuItem(GetMenu(hwnd), ID_REDO, MF_BYCOMMAND | (editor.CanRedo() ? MF_ENABLED : MF_DISABLED));
         EnableMenuItem(GetMenu(hwnd), ID_COPY, MF_BYCOMMAND | (editor.HasSelection() ? MF_ENABLED : MF_DISABLED));
@@ -250,5 +248,6 @@ int main(int argument_count, char* argument_list[])
 
     return 0;
 }
+
 
 

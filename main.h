@@ -34,14 +34,12 @@ ImFont* FontAwesome;
 ImFont* FontAwesomeBrands;
 
 TextEditor editor;
-const char* fileToEdit = "";
 
 std::map <std::string, const char*> icons = {
     {"html", ICON_FA_HTML5},
     {"py", ICON_FA_PYTHON},
     {"js", ICON_FA_SQUARE_JS},
     {"css", ICON_FA_CSS3_ALT},
-    {"php", ICON_FA_PHP},
     {"gitattributes", ICON_FA_GITHUB},
     {"gitignore", ICON_FA_GITHUB},
     {"cpp", ICON_FA_FILE_CODE},
@@ -52,25 +50,20 @@ std::map <std::string, const char*> icons = {
     {"jpg", ICON_FA_FILE_IMAGE}
 };
 
+__forceinline void padding(float x, float y)
+{
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + x);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y);
+}
+
 void ToEdit(const char* file)
 {
-    fileToEdit = file;
+    editor.fileToEdit = file;
     std::ifstream t(file);
     if (t.good())
     {
         std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
         editor.SetText(str);
-    }
-}
-
-void SaveText(std::string text)
-{
-    std::ofstream fw(fileToEdit, std::ofstream::out);
-
-    if (fw.is_open())
-    {
-        fw << text;
-        fw.close();
     }
 }
 
@@ -136,11 +129,37 @@ void RecursivelyDisplayDirectoryNode(const DirectoryNode& parentNode)
     {
         std::string type = get_ext(parentNode.FileName);
 
-        if (ImGui::TreeNodeEx((parentNode.FileName).c_str(), ((icons.find(type) != icons.end() ? icons[type] : ICON_FA_FILE) + parentNode.FileName + (parentNode.FullPath.c_str() == fileToEdit && editor.CanUndo() ? "*" : "")).c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth))
+        if (ImGui::TreeNodeEx((parentNode.FileName).c_str(), ((icons.find(type) != icons.end() ? icons[type] : ICON_FA_FILE) + parentNode.FileName + (parentNode.FullPath.c_str() == editor.fileToEdit && editor.CanUndo() ? "*" : "")).c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth))
         {
             if (ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered())
             {
+                ShellExecute(0, 0, parentNode.FullPath.c_str(), 0, 0, SW_SHOW);
+            }
+            else if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
+            {
                 ToEdit(parentNode.FullPath.c_str());
+
+                if (type == "py") {
+                    editor.SetColorizerEnable(true);
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Python());
+                }
+                else if (type == "cpp" || type == "c" || type == "hpp" || type == "h") {
+                    editor.SetColorizerEnable(true);
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Cpp());
+                }
+                else if (type == "html") {
+                    editor.SetColorizerEnable(true);
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::HTML());
+                }
+                else if (type == "css") {
+                    editor.SetColorizerEnable(true);
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CSS());
+                }
+                else {
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::TXT());
+                    editor.SetCheckComments(false);
+                    editor.SetColorizerEnable(false);
+                }
             }
         }
     }
@@ -223,13 +242,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     switch (msg)
     {
-    case WM_COMMAND:
-    case WM_HOTKEY: {
+    case WM_COMMAND:{
         UINT uState = GetMenuState(GetMenu(hWnd), wParam, MF_BYCOMMAND);
         switch (wParam) {
         case ID_SAVE: {
-            std::string textToSave = editor.GetText();
-            SaveText(textToSave);
+            editor.Save(editor.GetText(), editor.fileToEdit);
             break;
         }
         case ID_QUIT: {

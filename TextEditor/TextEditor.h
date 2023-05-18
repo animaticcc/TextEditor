@@ -10,6 +10,8 @@
 #include <regex>
 #include "../imgui/imgui.h"
 
+#include <fstream>
+
 class TextEditor
 {
 public:
@@ -173,13 +175,11 @@ public:
 		{
 		}
 
-		static const LanguageDefinition& CPlusPlus();
-		static const LanguageDefinition& HLSL();
-		static const LanguageDefinition& GLSL();
-		static const LanguageDefinition& C();
-		static const LanguageDefinition& SQL();
-		static const LanguageDefinition& AngelScript();
-		static const LanguageDefinition& Lua();
+		static const LanguageDefinition& Cpp();
+		static const LanguageDefinition& Python();
+		static const LanguageDefinition& HTML();
+		static const LanguageDefinition& CSS();
+		static const LanguageDefinition& TXT();
 	};
 
 	TextEditor();
@@ -212,6 +212,8 @@ public:
 
 	bool IsColorizerEnabled() const { return mColorizerEnabled; }
 	void SetColorizerEnable(bool aValue);
+
+	void SetCheckComments(bool aValue);
 
 	Coordinates GetCursorPosition() const { return GetActualCursorCoordinates(); }
 	void SetCursorPosition(const Coordinates& aPosition);
@@ -259,6 +261,9 @@ public:
 	bool CanRedo() const;
 	void Undo(int aSteps = 1);
 	void Redo(int aSteps = 1);
+
+	void Save(std::string text, const char* fileToEdit);
+	const char* fileToEdit = "";
 
 	static const Palette& GetDarkPalette();
 	static const Palette& GetLightPalette();
